@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
+    
+    <style>
+      circle.dimple-series-1 {
+        fill: red;
+      }
+
+      h2 {
+        text-align: center;
+      }
+      p {
+        text-align: left;
+      }    </style>
+
+    <script type="text/javascript">
+        function draw(datasrc) {
+        // ### start of draw function     
+        /*
+        D3.js setup code
+        */
+        //ensure javascript is executed in "strict mode" (tighter syntax checking)
+        "use strict";
+        var marginx = 85,
+            marginy = 95,
+            width = 590,
+            height = 400;
+
+        //chart title
+        d3.select("body")
+            .append("h2")
+            .text("Home Runs");
+
+        //SVG element to hold the chart
+        var svg = d3.select("body")
+            .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+            .append('g')
+                .attr('class','chart');
+        
+        d3.select("body")
+            .append("p")
+            .text("Batting results might be thought to be directly related to player size. \
+            In this graph the summed Home Runs (HRs) are plotted as a function of Body Mass Index, \
+            where BMI=mass(kg)/height(m)^2. BMI is often used as a measure of a person's size, \
+            and in a fit individual it generally increases with strength (rather than obesity). \
+            The graph also shows handedness as bar color. \
+             \
+            The graph demonstrates that there are more HRs from right-handers (RHs) than left-handers (LHs) \
+            or both-handers (BHs), for each of the BMI categories. \
+            Likewise the HRs from LHs are greater than HRs from BHs in each BMI category. \
+            However, the effect of BMI size on HRs is unclear because the number of players \
+            in each handedness category is not fixed. The following graph is intended to address this issue.\
+            ");
+        /*
+        Dimple.js Chart construction code
+        */
+        //filter data to only include the players with non-zero batting average (BA=0 indicates missing data).
+        // The NZ column was constructed in Excel.
+        var data = dimple.filterData(datasrc, "NZ", "1");
+
+        //instantiate the chart
+        var myChart = new dimple.chart(svg, data);
+        //set chart location and size
+        myChart.setBounds(60, 30, width - marginx, height - marginy)
+        //add the x-axis as BMI with limits to show only the relevant range.
+        //BMI was constructed in Excel using the formula BMI = weight / height^2 * 703
+        var x = myChart.addCategoryAxis("x", ["BMI-Type","Handedness"]);
+        x.addOrderRule("BMI-Type");
+
+        //add the y-axis for Batting Average with 3 decimal places shown
+        var y = myChart.addMeasureAxis("y","Home Runs");
+
+        
+        // Indicate the series. 
+        myChart.addSeries(["Handedness"], dimple.plot.bar);
+        // Handedness will be shown in the legend.
+        var myLegend = myChart.addLegend(60, 20, width-marginx-5, 20, "right");
+
+        myChart.draw();
+        // Orphan the legend, so that it will not respond to graph updates (refreshes).
+        // Also needed for the events defined below.
+        myChart.legends = [];
+
+        // This block adds the legend title. I put it into a d3 data
+        // object to generalize it (so that it could be used without dimple). 
+        svg.selectAll("title_text")
+            .data(["Handedness of Players", "Click to show/hide"])
+            .enter()
+            .append("text")
+                .attr("x", width - 140)
+                .attr("y", function (d, i) { return 8 + i * 8; })
+                .style("font-family", "sans-serif")
+                .style("font-size", "10px")
+                .style("color", "Black")
+                .text(function (d) { return d; });
+
+        // Get a list of all the types of handedness to use when filtering.
+        var filterValues = dimple.getUniqueValues(data, "Handedness");
+        
+        // Get all the legend rectangles         
+        myLegend.shapes.selectAll("rect")
+            //Add a click event to each rect.
+            .on("click", function(e) {
+                //flag where show=true means visible
+                var show = true;
+                var newFilters = [];
+                // If the filters contain the clicked shape then hide it
+                filterValues.forEach(function(f) {
+                    if (f === e.aggField.slice(-1)[0]) {
+                        show = false;
+                    } else {
+                        newFilters.push(f);
+                    }
+                }); // end filterValues
+                
+                // Show/hide the legend item
+                if (show) {
+                    //put the handedness type into the filter list for showing
+                    newFilters.push(e.aggField.slice(-1)[0]);
+                    //make the legend rectangle opaque /dark
+                    d3.select(this).style("opacity", 0.8);
+                } else {
+                    //make the legend rectangle transparent
+                    d3.select(this).style("opacity", 0.2);
+                }
+                // Update the filters to indicate the legend items that will be shown
+                filterValues = newFilters;
+                // Filter the data
+                myChart.data = dimple.filterData(data, "Handedness", filterValues);
+                // Passing a duration parameter makes the chart animate. Without
+                // it there is no transition
+                // The frame duration for the animation in milliseconds
+                var frame = 800;
+                myChart.draw(frame);
+            });    //end click event handler          
+        }; //end of draw function
+
+
+
+    function draw2(datasrc) {
+        // ### start of draw2 function     
+        /*
+        D3.js setup code
+        */
+        //ensure javascript is executed in "strict mode" (tighter syntax checking)
+        "use strict";
+        var marginx = 85,
+            marginy = 95,
+            width = 590,
+            height = 400;
+
+        //chart title
+        d3.select("body")
+            .append("h2")
+            .text("Home Runs Normalized to Handedness Group Size");
+
+        //SVG element to hold the chart
+        var svg = d3.select("body")
+            .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+            .append('g')
+                .attr('class','chart');
+        
+        d3.select("body")
+            .append("p")
+            .text("For this graph, the HRs are normalized to the same number \
+            of players (1000) per handedness category. This graph clarifies that there \
+            is a lower rate of HRs from the small (BMI <=23) players than either the \
+            medium or large players. The LH players have a higher rate of HRs than the \
+            two other handedness categories (for medium and large players). The RH \
+            players have a trend of higher HRs depending on player size (largest players \
+            have highest HRs; smallest players have lowest HRs). This trend is not present \
+            with the BH players. \
+            ");
+        /*
+        Dimple.js Chart construction code
+        */
+        //filter data to only include the players with non-zero batting average (BA=0 indicates missing data).
+        // The NZ column was constructed in Excel.
+        var data = dimple.filterData(datasrc, "NZ", "1");
+
+        //instantiate the chart
+        var myChart = new dimple.chart(svg, data);
+        //set chart location and size
+        myChart.setBounds(60, 60, width - marginx, height - marginy)
+        //add the x-axis as BMI with limits to show only the relevant range.
+        //BMI was constructed in Excel using the formula BMI = weight / height^2 * 703
+        var x = myChart.addCategoryAxis("x", ["BMI-Type","Handedness"]);
+        x.addOrderRule("BMI-Type");
+
+        //add the y-axis for Batting Average with 3 decimal places shown
+        var y = myChart.addMeasureAxis("y","HR Norm");
+        
+        // Indicate the series. 
+        myChart.addSeries(["Handedness"], dimple.plot.bar);
+        // Handedness will be shown in the legend.
+        var myLegend = myChart.addLegend(60, 20, width-marginx-5, 20, "right");
+
+        myChart.draw();
+        // Orphan the legend, so that it will not respond to graph updates (refreshes).
+        // Also needed for the events defined below.
+        myChart.legends = [];
+
+        // This block adds the legend title. I put it into a d3 data
+        // object to generalize it (so that it could be used without dimple). 
+        svg.selectAll("title_text")
+            .data(["Handedness of Players", "Click to show/hide"])
+            .enter()
+            .append("text")
+                .attr("x", width - 140)
+                .attr("y", function (d, i) { return 8 + i * 8; })
+                .style("font-family", "sans-serif")
+                .style("font-size", "10px")
+                .style("color", "Black")
+                .text(function (d) { return d; });
+
+        // Get a list of all the types of handedness to use when filtering.
+        var filterValues = dimple.getUniqueValues(data, "Handedness");
+
+        // Get all the legend rectangles         
+        myLegend.shapes.selectAll("rect")
+            //Add a click event to each rect.
+            .on("click", function(e) {
+                //flag where show=true means visible
+                var show = true;
+                var newFilters = [];
+                // If the filters contain the clicked shape then hide it
+                filterValues.forEach(function(f) {
+                    if (f === e.aggField.slice(-1)[0]) {
+                        show = false;
+                    } else {
+                        newFilters.push(f);
+                    }
+                }); // end filterValues
+                
+                // Show/hide the legend item
+                if (show) {
+                    //put the handedness type into the filter list for showing
+                    newFilters.push(e.aggField.slice(-1)[0]);
+                    //make the legend rectangle opaque /dark
+                    d3.select(this).style("opacity", 0.8);
+                } else {
+                    //make the legend rectangle transparent
+                    d3.select(this).style("opacity", 0.2);
+                }
+                // Update the filters to indicate the legend items that will be shown
+                filterValues = newFilters;
+                // Filter the data
+                myChart.data = dimple.filterData(data, "Handedness", filterValues);
+                // Passing a duration parameter makes the chart animate. Without
+                // it there is no transition
+                // The frame duration for the animation in milliseconds
+                var frame = 800;
+                myChart.draw(frame);
+            });    //end click event handler          
+                       
+        }; //end of draw2 function
+    </script>
+  </head>
+<body>
+  <script type="text/javascript">
+  /*
+    Use D3 (not dimple.js) to load the TSV file
+    and pass the contents of it to the draw function
+    */
+  d3.tsv("baseball_data2.tsv", draw);
+  d3.tsv("baseball_data2.tsv", draw2);
+  </script>
+</body>
+
+</html>

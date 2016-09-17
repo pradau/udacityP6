@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="http://d3js.org/d3.v3.min.js"></script>
+    <script src="http://dimplejs.org/dist/dimple.v2.0.0.min.js"></script>
+    
+    <style>
+      circle.dimple-series-1 {
+        fill: red;
+      }
+
+      h2 {
+        text-align: center;
+      }
+      p {
+        text-align: left;
+      }    </style>
+
+    <script type="text/javascript">
+        function draw(datasrc) {
+        // ### start of draw function     
+        /*
+        D3.js setup code
+        */
+        //ensure javascript is executed in "strict mode" (tighter syntax checking)
+        "use strict";
+        var marginx = 85,
+            marginy = 95,
+            width = 590,
+            height = 400;
+
+        //chart title
+        d3.select("body")
+            .append("h2")
+            .text("Home Runs");
+
+        //SVG element to hold the chart
+        var svg = d3.select("body")
+            .append("svg")
+                .attr("width", width)
+                .attr("height", height)
+            .append('g')
+                .attr('class','chart');
+        
+        //Description text after the chart
+        d3.select("body")
+            .append("p")
+            .text("Batting results might be thought to be directly related to player size. \
+            In this chart the fractional Home Runs (HR) are shown for categories of Handedness \
+            with bar colors indicating the body size calculated by Body Mass Index where \
+            BMI=mass(kg)/height(m)^2. BMI is often used as a measure of a person's size, \
+            and in a fit individual it generally increases with strength (rather than obesity). \
+            The chart confirms that the majority of home runs are due to larger players, \
+            but this trend is stronger with right-handers (R), and when comparing the small (BMI<23) players \
+            to the other sizes. The players able to hit both (B) ways, or left-handed (L),  \
+            appear to have marginally more home runs hit by average sized players than the larger players.\
+            ");
+        /*
+        Dimple.js Chart construction code
+        */
+        //filter data to only include the players with non-zero batting average (BA=0 indicates missing data).
+        // The NZ column was constructed in Excel.
+        var data = dimple.filterData(datasrc, "NZ", "1");
+
+        //instantiate the chart
+        var myChart = new dimple.chart(svg, data);
+
+        //set chart location and size
+        myChart.setBounds(60, 60, width - marginx, height - marginy)
+
+        //add the x-axis as handedness
+        var x = myChart.addCategoryAxis("x", ["Handedness"]);
+        x.addOrderRule("Handedness");
+
+        //add the y-axis for Home Runs fraction with 3 decimal places shown
+        var y = myChart.addPctAxis("y","Home Runs");
+        y.tickFormat = ".3f";
+        
+        // Indicate the series. 
+        //BMI was constructed in Excel using the formula BMI = weight / height^2 * 703
+        // The 3 categories were calculated from BMI to provide the new column BMI-Type.
+        myChart.addSeries(["BMI-Type"], dimple.plot.bar);
+        var myLegend = myChart.addLegend(60, 40, width-marginx-5, 20, "right");
+
+        myChart.draw();
+
+        // Orphan the legend, so that it will not respond to graph updates (refreshes).
+        // Also needed for the events defined below.
+        myChart.legends = [];
+
+        // This block adds the legend title. I put it into a d3 data
+        // object to generalize it (so that it could be used without dimple). 
+        svg.selectAll("title_text")
+            .data(["BMI Category of Players", "Click to show/hide"])
+            .enter()
+            .append("text")
+                .attr("x", width - 200)
+                .attr("y", function (d, i) { return 12 + i * 12; })
+                .style("font-family", "sans-serif")
+                .style("font-size", "10px")
+                .style("color", "Black")
+                .text(function (d) { return d; });
+
+        //
+        // Interactive Legend for showing /hiding certain BMI-Type categories
+        //
+        // Get a list of all the types to use when filtering.
+        var filterValues = dimple.getUniqueValues(data, "BMI-Type");
+        
+        // Get all the legend rectangles         
+        myLegend.shapes.selectAll("rect")
+            //Add a click event to each rect.
+            .on("click", function(e) {
+                //flag where show=true means visible
+                var show = true;
+                var newFilters = [];
+                // If the filters contain the clicked shape then hide it
+                filterValues.forEach(function(f) {
+                    if (f === e.aggField.slice(-1)[0]) {
+                        show = false;
+                    } else {
+                        newFilters.push(f);
+                    }
+                }); // end filterValues
+                
+                // Show/hide the legend item
+                if (show) {
+                    //put the type into the filter list for showing
+                    newFilters.push(e.aggField.slice(-1)[0]);
+                    //make the legend rectangle opaque /dark
+                    d3.select(this).style("opacity", 0.8);
+                } else {
+                    //make the legend rectangle transparent
+                    d3.select(this).style("opacity", 0.2);
+                }
+                // Update the filters to indicate the legend items that will be shown
+                filterValues = newFilters;
+                // Filter the data
+                myChart.data = dimple.filterData(data, "BMI-Type", filterValues);
+                // Passing a duration parameter makes the chart animate. Without
+                // it there is no transition
+                // The frame duration for the animation in milliseconds
+                var frame = 800;
+                myChart.draw(frame);
+            });    //end click event handler          
+            
+        }; //end of draw function
+
+    </script>
+  </head>
+<body>
+  <script type="text/javascript">
+  /*
+    Use D3 (not dimple.js) to load the TSV file
+    and pass the contents of it to the draw function
+    */
+  d3.tsv("baseball_data2.tsv", draw);
+  </script>
+</body>
+
+</html>
